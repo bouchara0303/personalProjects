@@ -5,13 +5,17 @@ from reedSolomon import ReedSolomon
 """
 Program for creating Version 4 QR Codes with error correction level M
 """
-
-alphaNumericEncoding = {'0':'0', '1':'1', '2':'2',  '3':'3', '4':'4', '5':'5',
-'6':'6', '7':'7', '8':'8', '9':'9', 'A':'10', 'B':'11', 'C':'12', 'D':'13',
-'E':'14', 'F':'15', 'G':'16', 'H':'17', 'I':'18', 'J':'19', 'K':'20', 'L':'21',
-'M':'22', 'N':'23', 'O':'24', 'P':'25', 'Q':'26', 'R':'27', 'S':'28', 'T':'29',
-'U':'30', 'V':'31', 'W':'32', 'X':'33', 'Y':'34', 'Z':'35', ' ':'36', '$':'37',
-'%':'38', '*':'39', '+':'40', '-':'41', '.':'42', '/':'43', ':':'44'}
+mode = 'A'
+if mode == 'A':
+    alphaNumericEncoding = {'0':'0', '1':'1', '2':'2',  '3':'3', '4':'4', '5':'5',
+    '6':'6', '7':'7', '8':'8', '9':'9', 'A':'10', 'B':'11', 'C':'12', 'D':'13',
+    'E':'14', 'F':'15', 'G':'16', 'H':'17', 'I':'18', 'J':'19', 'K':'20', 'L':'21',
+    'M':'22', 'N':'23', 'O':'24', 'P':'25', 'Q':'26', 'R':'27', 'S':'28', 'T':'29',
+    'U':'30', 'V':'31', 'W':'32', 'X':'33', 'Y':'34', 'Z':'35', ' ':'36', '$':'37',
+    '%':'38', '*':'39', '+':'40', '-':'41', '.':'42', '/':'43', ':':'44'}
+elif mode == 'B':
+    ### Eventually need to make a byte mode qr encoding to add lowercase characters ###
+    exit()
 
 #Create list of modules for encoded data
 modules = []
@@ -19,31 +23,40 @@ data = ""
 
 ###############Encoding data###############
 
-URL = "github.com"
+URL = "github.com/bouchara0303"
 URL = URL.upper()
 URLLength = len(URL)
 
 #Encoding input string
 i = 1
-for char in URL:
-    modules.append(char)
-    if (i % 2) == 0:
-        char1 = int(alphaNumericEncoding[modules[-2]])
-        char2 = int(alphaNumericEncoding[modules[-1]])
-        result = bin((45 * char1) + char2)[2:]
-        del modules[-2:]
-        while len(result) != 11:
-            result = '0' + result
-        modules.append(result)
-    i = i + 1
-if (URLLength % 2) == 1:
-    char2 = int(alphaNumericEncoding[modules[-1]])
-    result = bin(char2)[2:]
-    del modules[-1]
-    while len(result) != 6:
-        result = '0' + result
-    modules.append(result)
+valueBuffer = []
 
+#Add alphanumeric values to list
+for char in URL:
+    modules.append(int(alphaNumericEncoding[char]))
+for i in range(0, len(modules) // 2):
+
+    #Pair alphanumeric values in twos
+    valueBuffer.append(modules[(2 * i): (2 * (i + 1))]) ##########GOOD##########
+if len(modules) % 2 == 1:
+    valueBuffer.append(modules[-1])
+    modules.clear()
+    for i in range(0, len(valueBuffer) - 1):
+        temp = bin((valueBuffer[i][0] * 45) + valueBuffer[i][1])[2:]
+        while len(temp) < 11:
+            temp = '0' + temp
+        modules.append(temp)
+    temp = bin(valueBuffer[-1])[2:]
+    while len(temp) < 6:
+        temp = '0' + temp
+    modules.append(temp)
+else:
+    modules.clear()
+    for pair in valueBuffer:
+        temp = bin((pair[0] * 45) + pair[1])[2:]
+        while len(temp) < 11:
+            temp = '0' + temp
+        modules.append(temp)
 
 #Identify encoding mode for QR code
 alphaNumericMode = "0010"
@@ -70,7 +83,7 @@ for block in modules:
 i = 1
 while (len(data) < requiredBits) and (i < 5):
     data += "0"
-    i = i + 1
+    i += 1
 
 #Add zeros to encoded string until it can be split into bytes
 while (len(data) % 8) != 0:
@@ -78,7 +91,7 @@ while (len(data) % 8) != 0:
 
 #Add padding bits if encoded string is too short
 i = 1
-while len(data) != requiredBits:
+while len(data) < requiredBits:
     if i % 2 == 1:
         data += "11101100"
     elif i % 2 == 0:
@@ -96,7 +109,7 @@ for codeword in modules:
 
 #Reed solomon error correction codewords
 ecBlock1 = ReedSolomon().RSEncode(coefficients[0:32], 18)[32:50]
-ecBlock2 = ReedSolomon().RSEncode(coefficients[0:32], 18)[32:50]
+ecBlock2 = ReedSolomon().RSEncode(coefficients[32:64], 18)[32:50]
 
 #Convert decimal numbers to binary
 for i in range(0,18):
@@ -167,7 +180,7 @@ QRCode[0:7, 26:33] = orientBlock
 QRCode[0:7, 0:7] = orientBlock
 QRCode[26:33, 0:7] = orientBlock
 QRCode[24:29, 24:29] = alignmentBlock
-QRCode[26, 8] = darkModule
+QRCode[25, 8] = darkModule
 
 #Fill timing patterns
 for i in range(7, 26):
@@ -193,7 +206,8 @@ subColumn = 1
 direction = 1
 maxQRIndex = 32
 for x in range(0, len(finalDataString)):
-    #Convert data to array blocks
+
+    #Convert data to colored blocks
     if finalDataString[x] == '1':
         colorFill = [0, 0, 0]
     else:
@@ -284,7 +298,7 @@ for x in range(0, len(finalDataString)):
     #Update coordinates and subColumn
     i += deltaI
     j += deltaJ
-    subColumn += 1
+    subColumn += 1 #Should be working
 
 ###############Masking data pattern###############
 
@@ -412,6 +426,7 @@ mask7 = totalQRList.copy()
 def charChange(word, position, replacment):
     return word[:position] + replacment + word[position + 1:]
 
+#Create all 8 masks
 for x,y in dataCoordinates:
     if((y + x) % 2) == 0:
         if totalQRList[y][x] == '1':
@@ -477,8 +492,10 @@ for i in range(0, len(maskList)):
     if (maskList[i] < min):
         min = maskList[i]
         bestMask = i
+print(bestMask)
 
 ###############Add format and version information###############
+
 #Create string to tell error correction level and the mask type
 errorCorrectionLevel = '00'
 maskType = bin(bestMask)[2:]
@@ -486,12 +503,50 @@ while len(maskType) < 3:
     maskType = '0' + maskType
 errAndMask = errorCorrectionLevel + maskType
 
-#Split to coefficients for reed solomon polynomial
-errAndMask = [int(errAndMask[i]) for i in range(0, len(errAndMask))]
+#Split into coefficients for reed solomon polynomial
+errAndMask = [int(x) for x in errAndMask]
+formatList = errAndMask.copy()
 
-#Add error correction bits
-errAndMask = ReedSolomon().RSEncode(errAndMask, 10)
+#Pad Version info with 10 zeros for error correction calculation
+for i in range(0, 10):
+    errAndMask.append(0)
 
+#Get error correction bits for format info using reed solomon error correction
+while(len(errAndMask) > 10):
+
+    #If mask type 0
+    if(([0] * 15) == errAndMask):
+        errAndMask = errAndMask[5:]
+        break
+
+    #Generator polynomial for error correction
+    genPoly = [1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1]
+
+    #Match length of Generator polynomial with length of data polynomial
+    while len(genPoly) < len(errAndMask):
+        genPoly.append(0)
+
+    #Bitwise XOR result with Generator polynomial
+    for i in range(0, len(errAndMask)):
+        errAndMask[i] ^= genPoly[i]
+
+    #Remove leading zeros
+    while (errAndMask[0] == 0):
+        errAndMask = errAndMask[1:]
+
+#Pad final result
+while(len(errAndMask) < 10):
+    errAndMask = [0] + errAndMask
+
+result = formatList + errAndMask
+
+#XOR result with mask string
+maskString = [int(x) for x in "101010000010010"]
+for i in range(0, len(result)):
+    result[i] ^= maskString[i]
+errAndMask = result
+
+print(errAndMask)
 bestMask = masks[bestMask]
 
 #Placing version info
@@ -499,33 +554,64 @@ bestMask = masks[bestMask]
 for i in range(0, 6):
     if errAndMask[i] == 1:
         bestMask[8] = charChange(bestMask[8], i, '1')
-    if errAndMask[-i] == 1:
+    else:
+        bestMask[8] = charChange(bestMask[8], i, '0')
+    if errAndMask[-(i + 1)] == 1:
         bestMask[i] = charChange(bestMask[i], 8, '1')
+    else:
+        bestMask[i] = charChange(bestMask[i], 8, '0')
+#Corner modules
 if errAndMask[6] == 1:
     bestMask[8] = charChange(bestMask[8], 7, '1')
+else:
+    bestMask[8] = charChange(bestMask[8], 7, '0')
 if errAndMask[7] == 1:
     bestMask[8] = charChange(bestMask[8], 8, '1')
+else:
+    bestMask[8] = charChange(bestMask[8], 8, '0')
 if errAndMask[8] == 1:
-    bestMask[8] = charChange(bestMask[8], 7, '1')
-print(errAndMask)
-#Below upper right finder pattern and besides lower left finder pattern
+    bestMask[7] = charChange(bestMask[7], 8, '1')
+else:
+    bestMask[7] = charChange(bestMask[7], 8, '0')
+
+#Besides lower left finder pattern
 for i in range(0, 7):
     if errAndMask[i] == 1:
         bestMask[maxQRIndex - i] = charChange(bestMask[maxQRIndex - i], 8, '1')
-    if errAndMask[-i] == 1:
-        bestMask[8] = charChange(bestMask[8], maxQRIndex - i, '1')
-#Create empty output block
-outputQRCode = np.full([33, 33, 3], dtype=np.uint8, fill_value=255)
+    else:
+        bestMask[maxQRIndex - i] = charChange(bestMask[maxQRIndex - i], 8, '0')
 
+#Below upper right finder pattern
+count = 7
+for i in range(7, 15):
+    if errAndMask[i] == 1:
+        bestMask[8] = charChange(bestMask[8], maxQRIndex - count, '1')
+    else:
+        bestMask[8] = charChange(bestMask[8], maxQRIndex - count, '0')
+    count -= 1
+
+#Create empty output block
+# QRCode = np.full([33, 33, 3], dtype=np.uint8, fill_value=255)
+
+#Add padding to QR Code
+outputQRCode = np.full([41, 41, 3], dtype=np.uint8, fill_value=255)
+
+#Create QR Code
 for y in range(0, (maxQRIndex + 1)):
     for x in range(0, (maxQRIndex + 1)):
         if bestMask[y][x] == '1':
-            outputQRCode[y][x] = [0, 0, 0]
+            QRCode[y][x] = [0, 0, 0]
         else:
-            outputQRCode[y][x] = [255, 255, 255]
+            QRCode[y][x] = [255, 255, 255]
+
+
+#Place QR code in padded block
+for x in range(4, 37):
+    for y in range(4, 37):
+        outputQRCode[y, x] = QRCode[y - 4][x - 4]
 
 ###############Generating QR Code###############
 
 #Output array as png
-QRCode = Image.fromarray(outputQRCode, "RGB")
+QRCode = Image.fromarray(QRCode, "RGB")
 QRCode.save("GeneratedQRCode.PNG")
