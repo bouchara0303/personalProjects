@@ -43,4 +43,4 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Acknowledgments
 
-* Thanks to the author of [reedSolomon.py](reedSolomon.py) for an easier encoding process!
+* Thanks to the author of [reedSolomon.py](QRGenerator/reedSolomon.py) for making the encoding process easier!
