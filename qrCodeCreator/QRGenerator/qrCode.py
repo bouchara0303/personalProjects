@@ -5,7 +5,12 @@ from reedSolomon import ReedSolomon
 """
 Program for creating Version 4 QR Codes with error correction level M
 """
-mode = 'A'
+mode = ""
+#Ask for encoding mode
+while (mode != 'A') and (mode != 'B'):
+    mode = input("Would you like to encode in Alphanumeric mode or Byte mode? A:(0-9 + A-Z) or B:(all ASCII characters) ")
+    mode = mode.upper()
+
 if mode == 'A':
     alphaNumericEncoding = {'0':'0', '1':'1', '2':'2',  '3':'3', '4':'4', '5':'5',
     '6':'6', '7':'7', '8':'8', '9':'9', 'A':'10', 'B':'11', 'C':'12', 'D':'13',
@@ -13,9 +18,6 @@ if mode == 'A':
     'M':'22', 'N':'23', 'O':'24', 'P':'25', 'Q':'26', 'R':'27', 'S':'28', 'T':'29',
     'U':'30', 'V':'31', 'W':'32', 'X':'33', 'Y':'34', 'Z':'35', ' ':'36', '$':'37',
     '%':'38', '*':'39', '+':'40', '-':'41', '.':'42', '/':'43', ':':'44'}
-elif mode == 'B':
-    ### Eventually need to make a byte mode qr encoding to add lowercase characters ###
-    exit()
 
 #Returns hexidecimal values
 hexChart = {'0':0, '1':1, '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, 'A':10, 'B':11, 'C':12, 'D':13, 'E':14, 'F':15}
@@ -28,7 +30,6 @@ data = ""
 
 #User input
 URL = input("Please enter the string you would like for encoding: ")
-URL = URL.upper()
 URLLength = len(URL)
 
 #Ask to place image in center
@@ -68,73 +69,96 @@ QRColor = []
 for i in range(0, 3):
     QRColor.append(tempColor[2 * i] + tempColor[(2 * i) + 1])
 
-# for i in range(0, 6):
-#     QRColor[i] = hexChart[QRColor[i]]
+#Alphanumeric encoding mode
+if mode == 'A':
 
+    URL = URL.upper()
 
-#Encoding input string
-i = 1
-valueBuffer = []
+    #Encoding input string
+    i = 1
+    valueBuffer = []
 
-#Add alphanumeric values to list
-for char in URL:
-    modules.append(int(alphaNumericEncoding[char]))
+    #Add alphanumeric values to list
+    for char in URL:
+        modules.append(int(alphaNumericEncoding[char]))
 
-#Pair alphanumeric values
-for i in range(0, len(modules) // 2):
-    valueBuffer.append(modules[(2 * i): (2 * (i + 1))])
+    #Pair alphanumeric values
+    for i in range(0, len(modules) // 2):
+        valueBuffer.append(modules[(2 * i): (2 * (i + 1))])
 
-#Check if number of pairs is even or odd
-if len(modules) % 2 == 1:
+    #Check if number of pairs is even or odd
+    if len(modules) % 2 == 1:
 
-    #Append final value for odd length
-    valueBuffer.append(modules[-1])
-    modules.clear()
+        #Append final value for odd length
+        valueBuffer.append(modules[-1])
+        modules.clear()
 
-    #Convert base 45 number to binary and add to modules list
-    for i in range(0, len(valueBuffer) - 1):
-        temp = bin((valueBuffer[i][0] * 45) + valueBuffer[i][1])[2:]
+        #Convert base 45 number to binary and add to modules list
+        for i in range(0, len(valueBuffer) - 1):
+            temp = bin((valueBuffer[i][0] * 45) + valueBuffer[i][1])[2:]
 
-        #Pad value pairs
-        while len(temp) < 11:
+            #Pad value pairs
+            while len(temp) < 11:
+                temp = '0' + temp
+            modules.append(temp)
+
+        #Pad lone value
+        temp = bin(valueBuffer[-1])[2:]
+        while len(temp) < 6:
             temp = '0' + temp
         modules.append(temp)
 
-    #Pad lone value
-    temp = bin(valueBuffer[-1])[2:]
-    while len(temp) < 6:
-        temp = '0' + temp
-    modules.append(temp)
+    #If even number of values
+    else:
+        modules.clear()
 
-#If even number of values
-else:
-    modules.clear()
+        #Convert base 45 number to binary and add to modules list
+        for pair in valueBuffer:
+            temp = bin((pair[0] * 45) + pair[1])[2:]
+            while len(temp) < 11:
+                temp = '0' + temp
+            modules.append(temp)
 
-    #Convert base 45 number to binary and add to modules list
-    for pair in valueBuffer:
-        temp = bin((pair[0] * 45) + pair[1])[2:]
-        while len(temp) < 11:
+    #Identify string length and format it to fit 9 bit block
+    if URLLength > 90:
+        print("""The desired link is too long for QR Code version 4.
+         Please consider using a link shortener...""")
+        quit()
+    else:
+        URLLength = bin(URLLength)[2:]
+        while len(URLLength) < 9:
+            URLLength = '0' + URLLength
+
+    #Identify encoding mode for QR Code
+    encodingMode = "0010"
+
+#Byte encoding mode
+elif mode == 'B':
+    for char in URL:
+        temp = bin(ord(char))[2:]
+        while len(temp) < 8:
             temp = '0' + temp
         modules.append(temp)
 
-#Identify encoding mode for QR code
-alphaNumericMode = "0010"
+    #Identify encoding mode for QR Code
+    encodingMode = "0100"
+
+    #Identify string length and format it to fit 9 bit block
+    if URLLength > 62:
+        print("""The desired link is too long for QR Code version 4.
+         Please consider using a link shortener...""")
+        quit()
+    else:
+        URLLength = bin(URLLength)[2:]
+        while len(URLLength) < 8:
+            URLLength = '0' + URLLength
+
 
 #Required number of bits for Version 4-M QR Code
 requiredBits = 512
 
-#Identify string length and format it to fit 9 bit block
-if URLLength > 90:
-    print("""The desired link is too long for QR Code version 4.
-     Please consider using a link shortener...""")
-    quit()
-else:
-    URLLength = bin(URLLength)[2:]
-    while len(URLLength) != 9:
-        URLLength = '0' + URLLength
-
 #Add encoded data from array to form single string
-data = alphaNumericMode + URLLength
+data = encodingMode + URLLength
 for block in modules:
     data += block
 
