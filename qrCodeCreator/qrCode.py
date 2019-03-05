@@ -17,15 +17,60 @@ elif mode == 'B':
     ### Eventually need to make a byte mode qr encoding to add lowercase characters ###
     exit()
 
+#Returns hexidecimal values
+hexChart = {'0':0, '1':1, '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, 'A':10, 'B':11, 'C':12, 'D':13, 'E':14, 'F':15}
+
 #Create list of modules for encoded data
 modules = []
 data = ""
 
 ###############Encoding data###############
 
-URL = "github.com/bouchara0303"
+#User input
+URL = input("Please enter the string you would like for encoding: ")
 URL = URL.upper()
 URLLength = len(URL)
+
+#Ask to place image in center
+image = input("Would you like to add an image to the center of your QR Code? (y/n): ")
+
+#Image should be in same directory as this file
+if((image == 'y') or (image == 'Y')):
+    image = input("Please enter the image file name: ")
+    try:
+        image = Image.open(image).resize((297, 297))
+        Image.composite(image, Image.new('RGB', image.size, 'white'), image)
+
+    except IOError:
+        print("Sorry but the file couldn't be found...")
+
+#Ask for color of QR code
+QRColor = "n/a"
+
+while len(QRColor) != 6:
+    QRColor = input("Please enter the hexidecimal color for the QR code: ")
+    QRColor = QRColor.upper()
+    isHex = True
+    for i in range(0, len(QRColor)):
+        if QRColor[i] not in hexChart:
+            isHex = False
+    if not isHex:
+        QRColor = "n/a"
+
+tempColor = []
+for i in range(0, 6):
+    if i % 2 == 0:
+        temp = hexChart[QRColor[i]] * 16
+        tempColor.append(temp)
+    else:
+        tempColor.append(hexChart[QRColor[i]])
+QRColor = []
+for i in range(0, 3):
+    QRColor.append(tempColor[2 * i] + tempColor[(2 * i) + 1])
+
+# for i in range(0, 6):
+#     QRColor[i] = hexChart[QRColor[i]]
+
 
 #Encoding input string
 i = 1
@@ -34,24 +79,38 @@ valueBuffer = []
 #Add alphanumeric values to list
 for char in URL:
     modules.append(int(alphaNumericEncoding[char]))
-for i in range(0, len(modules) // 2):
 
-    #Pair alphanumeric values in twos
-    valueBuffer.append(modules[(2 * i): (2 * (i + 1))]) ##########GOOD##########
+#Pair alphanumeric values
+for i in range(0, len(modules) // 2):
+    valueBuffer.append(modules[(2 * i): (2 * (i + 1))])
+
+#Check if number of pairs is even or odd
 if len(modules) % 2 == 1:
+
+    #Append final value for odd length
     valueBuffer.append(modules[-1])
     modules.clear()
+
+    #Convert base 45 number to binary and add to modules list
     for i in range(0, len(valueBuffer) - 1):
         temp = bin((valueBuffer[i][0] * 45) + valueBuffer[i][1])[2:]
+
+        #Pad value pairs
         while len(temp) < 11:
             temp = '0' + temp
         modules.append(temp)
+
+    #Pad lone value
     temp = bin(valueBuffer[-1])[2:]
     while len(temp) < 6:
         temp = '0' + temp
     modules.append(temp)
+
+#If even number of values
 else:
     modules.clear()
+
+    #Convert base 45 number to binary and add to modules list
     for pair in valueBuffer:
         temp = bin((pair[0] * 45) + pair[1])[2:]
         while len(temp) < 11:
@@ -105,6 +164,8 @@ modules = [data[i:i + 8] for i in range(0, len(data), 8)]
 #Coefficients for reed solomon polynomial
 coefficients = []
 for codeword in modules:
+
+    #Add bytes to coefficients and convert from binary to decimal equivalent
     coefficients.append(int(codeword, 2))
 
 #Reed solomon error correction codewords
@@ -113,6 +174,7 @@ ecBlock2 = ReedSolomon().RSEncode(coefficients[32:64], 18)[32:50]
 
 #Convert decimal numbers to binary
 for i in range(0,18):
+
     #First block
     temp = bin(ecBlock1[i])[2:]
     while len(temp) < 8:
@@ -158,22 +220,22 @@ orientBlock = np.full([7, 7, 3], dtype=np.uint8, fill_value=255)
 alignmentBlock = np.full([5, 5, 3], dtype=np.uint8, fill_value=255)
 
 #Always placed besides lower left orientation block
-darkModule = np.array([0, 0, 0])
+darkModule = np.array(QRColor)
 
 #Fill finder pattern arrays
 for i in range(0, 7):
     for j in range(0, 7):
         if (i == 0) or (i == 6) or (j == 0) or (j == 6):
-            orientBlock[j][i] = [0, 0, 0]
+            orientBlock[j][i] = QRColor
         elif (i > 1) and (i < 5) and (j > 1) and (j < 5):
-            orientBlock[j][i] = [0, 0, 0]
+            orientBlock[j][i] = QRColor
 
 #Fill alignment pattern arrays
 for i in range(0, 5):
     for j in range(0, 5):
         if (i == 0) or (i == 4) or (j == 0) or (j == 4):
-            alignmentBlock[j, i] = [0, 0, 0]
-alignmentBlock[2, 2] = [0, 0, 0]
+            alignmentBlock[j, i] = QRColor
+alignmentBlock[2, 2] = QRColor
 
 #Insert blocks
 QRCode[0:7, 26:33] = orientBlock
@@ -185,8 +247,8 @@ QRCode[25, 8] = darkModule
 #Fill timing patterns
 for i in range(7, 26):
     if (i % 2) == 0:
-        QRCode[6, i] = [0, 0, 0]
-        QRCode[i, 6] = [0, 0, 0]
+        QRCode[6, i] = QRColor
+        QRCode[i, 6] = QRColor
 
 ###############Placing data and EC modules###############
 
@@ -209,7 +271,7 @@ for x in range(0, len(finalDataString)):
 
     #Convert data to colored blocks
     if finalDataString[x] == '1':
-        colorFill = [0, 0, 0]
+        colorFill = QRColor
     else:
         colorFill = [255, 255, 255]
 
@@ -237,47 +299,57 @@ for x in range(0, len(finalDataString)):
         column += 1
         deltaJ = 0
         deltaI = -1
+
     #Reverse once reaching bottom of QRCode
     elif(isBetween(i, 9, maxQRIndex) and (j == maxQRIndex) and leftSubColumn and down):
         column += 1
         deltaJ = 0
         deltaI = -1
+
     #Jump over alignment pattern moving up
     elif(isBetween(i, 25, 28) and (j == 29) and leftSubColumn and up):
         deltaJ = -6
         deltaI = 1
+
     #Jump over alignment pattern moving down
     elif(isBetween(i, 25, 28) and (j == 23) and leftSubColumn and down):
         deltaJ = 6
         deltaI = 1
+
     # Shift left once reaching alignment pattern
     elif (isBetween(j, 25, 29) and leftSubColumn and (i == maxQRIndex - 9)):
         deltaJ = -1
         deltaI = 0
         subColumn -= 1
+
     #Skip over timing pattern moving up
     elif(isBetween(i, 9, 24) and (j == 7) and leftSubColumn and up):
         deltaJ = -2
         deltaI = 1
+
     #Reverse once reaching the top
     elif(isBetween(i, 9, 24) and (j == 0) and leftSubColumn and up):
         column += 1
         deltaJ = 0
         deltaI = -1
+
     #Skip over timing pattern moving down
     elif(isBetween(i, 9, 24) and (j == 5) and leftSubColumn and down):
         deltaJ = 2
         deltaI = 1
+
     #Shift over vertical timing pattern
     elif((i == 7) and (j == 9)):
         column += 1
         deltaJ = 0
         deltaI = -2
+
     #Change directions between high and low finder patterns while moving up
     elif(isBetween(i, 0, 5) and (j == 9) and up and leftSubColumn):
         column += 1
         deltaJ = 0
         deltaI = -1
+
     #Change directions between high and low finder patterns while moving down
     elif(isBetween(i, 0, 5) and (j == maxQRIndex - 8) and down and leftSubColumn):
         column += 1
@@ -306,10 +378,12 @@ for x in range(0, len(finalDataString)):
 totalQRString = ""
 for y in range(0, maxQRIndex + 1):
     for x in range(0, maxQRIndex + 1):
-        if ([0, 0, 0] in QRCode[y, x]):
+        if (QRColor in QRCode[y, x]):
             totalQRString += "1"
         else:
             totalQRString += "0"
+
+#Rows of all modules in QR Code
 totalQRList = [totalQRString[x: x + maxQRIndex + 1] for x in range(0, len(totalQRString), (maxQRIndex + 1))]
 
 
@@ -319,8 +393,10 @@ def maskEval(QRList):
     i = 0
 
     #####Score for 5 or more consecutive modules of same color in row/column#####
+
     #Row penalty score
     for row in QRList:
+
         #Iterate over row
         while(i <= maxQRIndex):
             count = 1
@@ -342,6 +418,7 @@ def maskEval(QRList):
 
     #Column penalty score
     for column in columnList:
+
         #Iterate over row
         i = 0
         while(i < maxQRIndex):
@@ -357,22 +434,26 @@ def maskEval(QRList):
     #####AND#####
     #####Score for number of finder pattern in code#####
 
+    #Patterns very similar to finder pattern in qr code
     pattern1 = "10111010000"
     pattern2 = "00001011101"
+
     #Scan over QR code for 2x2 blocks
     for x in range(0, (maxQRIndex)):
         for y in range(0, (maxQRIndex)):
             if(QRList[y][x] == QRList[y+1][x] == QRList[y][x+1] == QRList[y+1][x+1]):
                 score += 3
+
+            #Check for pattern to right
             if(x < (maxQRIndex - 10)):
-                #Check for pattern to right
                 checkPatX = ""
                 for i in range(0, 11):
                     checkPatX += QRList[y][x + i]
                 if((checkPatX == pattern1) or (checkPatX == pattern2)):
                     score += 40
+
+            #Check for pattern below
             if(y < (maxQRIndex - 10)):
-                #Check for pattern below
                 checkPatY = ""
                 for i in range(0, 11):
                     checkPatY += QRList[y + i][x]
@@ -492,7 +573,6 @@ for i in range(0, len(maskList)):
     if (maskList[i] < min):
         min = maskList[i]
         bestMask = i
-print(bestMask)
 
 ###############Add format and version information###############
 
@@ -538,19 +618,21 @@ while(len(errAndMask) > 10):
 while(len(errAndMask) < 10):
     errAndMask = [0] + errAndMask
 
+#Result after error correction
 result = formatList + errAndMask
 
-#XOR result with mask string
+#XOR result with mask string to get final result
 maskString = [int(x) for x in "101010000010010"]
 for i in range(0, len(result)):
     result[i] ^= maskString[i]
+
+#Final result
 errAndMask = result
 
-print(errAndMask)
+#Select best mask
 bestMask = masks[bestMask]
 
-#Placing version info
-#Around upper left finder pattern
+#Placing version info around upper left finder pattern
 for i in range(0, 6):
     if errAndMask[i] == 1:
         bestMask[8] = charChange(bestMask[8], i, '1')
@@ -560,7 +642,8 @@ for i in range(0, 6):
         bestMask[i] = charChange(bestMask[i], 8, '1')
     else:
         bestMask[i] = charChange(bestMask[i], 8, '0')
-#Corner modules
+
+#Placing version info around corner of upper left qr code
 if errAndMask[6] == 1:
     bestMask[8] = charChange(bestMask[8], 7, '1')
 else:
@@ -574,14 +657,14 @@ if errAndMask[8] == 1:
 else:
     bestMask[7] = charChange(bestMask[7], 8, '0')
 
-#Besides lower left finder pattern
+#Place version info besides lower left finder pattern
 for i in range(0, 7):
     if errAndMask[i] == 1:
         bestMask[maxQRIndex - i] = charChange(bestMask[maxQRIndex - i], 8, '1')
     else:
         bestMask[maxQRIndex - i] = charChange(bestMask[maxQRIndex - i], 8, '0')
 
-#Below upper right finder pattern
+#Place version info below upper right finder pattern
 count = 7
 for i in range(7, 15):
     if errAndMask[i] == 1:
@@ -591,27 +674,36 @@ for i in range(7, 15):
     count -= 1
 
 #Create empty output block
-# QRCode = np.full([33, 33, 3], dtype=np.uint8, fill_value=255)
+QRCode = np.full([33, 33, 3], dtype=np.uint8, fill_value=255)
 
 #Add padding to QR Code
-outputQRCode = np.full([41, 41, 3], dtype=np.uint8, fill_value=255)
+outputQRCode = np.full([37, 37, 3], dtype=np.uint8, fill_value=255)
 
 #Create QR Code
 for y in range(0, (maxQRIndex + 1)):
     for x in range(0, (maxQRIndex + 1)):
         if bestMask[y][x] == '1':
-            QRCode[y][x] = [0, 0, 0]
+            QRCode[y][x] = QRColor
         else:
             QRCode[y][x] = [255, 255, 255]
 
-
 #Place QR code in padded block
-for x in range(4, 37):
-    for y in range(4, 37):
-        outputQRCode[y, x] = QRCode[y - 4][x - 4]
+for x in range(2, 35):
+    for y in range(2, 35):
+        outputQRCode[y, x] = QRCode[y - 2][x - 2]
 
 ###############Generating QR Code###############
 
+#Cut out middle of QR Code to insert image
+if type(image) != type('n'):
+    for x in range(0, 11):
+        for y in range(0, 11):
+            if (x != 0) and (x != 10) and (y != 0) and (y != 10):
+                outputQRCode[y + 13, x + 13] = [255, 255, 255]
+
 #Output array as png
-QRCode = Image.fromarray(QRCode, "RGB")
+QRCode = Image.fromarray(outputQRCode, "RGB")
+QRCode = QRCode.resize((1221, 1221))
+if type(image) != type('n'):
+    QRCode.paste(image, (462, 462, 759, 759), image)
 QRCode.save("GeneratedQRCode.PNG")
