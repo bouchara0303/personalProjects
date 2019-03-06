@@ -1,6 +1,6 @@
 # QR Code Generator
 
-This application is used to generate version 4 QR codes with error correction level M. Currently it only supports alphanumeric characters (eg. 0-9 + A-Z). Eventually will provide support for different QR versions and character modes.
+This application is used to generate version 4 QR codes with error correction level M. Currently it only supports alphanumeric encoding as well as byte encoding. Eventually I will include support for different QR versions and character modes.
 
 ## Getting Started
 

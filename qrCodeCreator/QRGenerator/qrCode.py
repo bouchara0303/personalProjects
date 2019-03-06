@@ -730,4 +730,4 @@ QRCode = Image.fromarray(outputQRCode, "RGB")
 QRCode = QRCode.resize((1221, 1221))
 if type(image) != type('n'):
     QRCode.paste(image, (462, 462, 759, 759), image)
-QRCode.save("GeneratedQRCode.PNG")
+QRCode.save("generatedQRCode.png")
