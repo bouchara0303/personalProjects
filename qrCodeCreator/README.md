@@ -13,6 +13,8 @@ from QR import QR
 
 To generate a QR code simply supply the generate function with its necessary parameters. Use B for byte encoding and A for alphanumeric encoding:
 ```python
+from QR import QR
+
 QR().generate('b', 'hello, world!', 'y', 'github.png', '492E6B')
 ```
 
