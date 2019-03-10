@@ -81,7 +81,7 @@ class QR:
         return word[:pos] + rep + word[pos + 1:]
 
     #Generate QR Code
-    def generate(self, encodingMode, info, imagePrompt = "N", image = "", color = "000000"):
+    def generate(self, encodingMode, info, imagePrompt = "N", image = "", color = "0F0F0F"):
 
         #Checks to make sure of valid hexidecimal value
         isHex = True
@@ -520,17 +520,19 @@ class QR:
         for x in range(2, 35):
             for y in range(2, 35):
                 outputQRCode[y, x] = QRCode[y - 2][x - 2]
-
+                
         #Cut out middle of QR Code to insert image
-        for x in range(0, 11):
-            for y in range(0, 11):
-                if (x != 0) and (x != 10) and (y != 0) and (y != 10):
-                    outputQRCode[y + 13, x + 13] = [255, 255, 255]
+        if self.imagePrompt in ('Y', 'y'):
+            for x in range(0, 11):
+                for y in range(0, 11):
+                    if (x != 0) and (x != 10) and (y != 0) and (y != 10):
+                        outputQRCode[y + 13, x + 13] = [255, 255, 255]
 
         #Output array as png
         QRCode = Image.fromarray(outputQRCode, "RGB")
         QRCode = QRCode.resize((1221, 1221))
-        QRCode.paste(image, (462, 462, 759, 759), image)
+        if self.imagePrompt in ('Y', 'y'):
+            QRCode.paste(image, (462, 462, 759, 759), image)
         QRCode.save("generatedQRCode.png")
 
     def isBetween(num, x1, x2):
@@ -641,6 +643,3 @@ class QR:
 
         #Returns total score of the mask
         return score
-
-
-QR().generate("B", "this is a test", "Y", "Github.png", color = "0f8a90")

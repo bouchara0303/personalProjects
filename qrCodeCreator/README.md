@@ -6,9 +6,14 @@ This application is used to generate version 4 QR codes with error correction le
 
 Keep all files in same directory. If you would like to add an image to the QR Code, you must add an image in the same directory as well.
 
-To run the application:
+Make sure to include the QR class like so:
+```python
+from QR import QR
 ```
-python3 qrCode.py
+
+To generate a QR code simply supply the generate function with its necessary parameters. Use B for byte encoding and A for alphanumeric encoding:
+```python
+QR().generate('b', 'hello, world!', 'y', 'github.png', '492E6B')
 ```
 
 ### Prerequisites
